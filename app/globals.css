@@ -1,0 +1,53 @@
+/* app/globals.css */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background: #f5f5f4;
+}
+
+input, button, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+input[type="text"], input[type="search"] {
+  width: 100%;
+  padding: 6px 10px;
+  border: 0.5px solid #d1d5db;
+  border-radius: 6px;
+  background: #f9fafb;
+  color: #1a1a1a;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input[type="text"]:focus, input[type="search"]:focus {
+  border-color: #185FA5;
+  background: #fff;
+}
+
+button {
+  padding: 6px 14px;
+  border: 0.5px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+button:hover { background: #f3f4f6; border-color: #9ca3af; }
+button.primary {
+  background: #185FA5;
+  color: #fff;
+  border-color: #185FA5;
+}
+button.primary:hover { background: #0C447C; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
