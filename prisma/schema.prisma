@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+model Airport {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  name      String
+  city      String
+  country   String
+  terminals Terminal[]
+  beacons   Beacon[]
+  createdAt DateTime   @default(now())
+}
+
+model Terminal {
+  id        String      @id @default(cuid())
+  airportId String
+  airport   Airport     @relation(fields: [airportId], references: [id])
+  name      String
+  floor     Int         @default(0)
+  floorPlan Json
+  pois      POI[]
+  beacons   Beacon[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model POI {
+  id          String   @id @default(cuid())
+  terminalId  String
+  terminal    Terminal @relation(fields: [terminalId], references: [id])
+  name        String
+  type        POIType
+  x           Float
+  y           Float
+  description String?
+  gateCode    String?
+  openHours   String?
+  flightId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([terminalId])
+  @@index([type])
+}
+
+model Beacon {
+  id         String   @id @default(cuid())
+  airportId  String
+  airport    Airport  @relation(fields: [airportId], references: [id])
+  terminalId String
+  terminal   Terminal @relation(fields: [terminalId], references: [id])
+  macAddress String   @unique
+  x          Float
+  y          Float
+  floor      Int      @default(0)
+  txPower    Int      @default(-59)
+  label      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([terminalId])
+  @@index([floor])
+}
+
+model PositionLog {
+  id        String   @id @default(cuid())
+  sessionId String
+  x         Float
+  y         Float
+  floor     Int      @default(0)
+  accuracy  Float
+  method    String   @default("wifi")
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String
+  user      String   @default("admin")
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity])
+  @@index([createdAt])
+}
+
+enum POIType {
+  GATE
+  SHOP
+  DINING
+  LOUNGE
+  RESTROOM
+  SERVICE
+  SECURITY
+  CHECKIN
+  IMMIGRATION
+  BAGGAGE
+  RESTAURANT
+}
