@@ -219,23 +219,23 @@ export default function AirportMap({ floorPlan, playerX, playerY, onSelectPOI }:
     if (best) onSelectPOI(best)
   }
 
-  function onMouseDown(e: React.MouseEvent) {
+  function onMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
     dragRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, origOX: offsetX, origOY: offsetY }
   }
-  function onMouseMove(e: React.MouseEvent) {
+  function onMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
     if (!dragRef.current.dragging) return
     const dx = e.clientX - dragRef.current.startX
     const dy = e.clientY - dragRef.current.startY
     setOffset(dragRef.current.origOX + dx, dragRef.current.origOY + dy)
   }
-  function onMouseUp(e: React.MouseEvent) {
+  function onMouseUp(e: React.MouseEvent<HTMLCanvasElement>) {
     const d = dragRef.current
     if (Math.abs(e.clientX - d.startX) < 4 && Math.abs(e.clientY - d.startY) < 4) {
       handleClick(e)
     }
     dragRef.current.dragging = false
   }
-  function onWheel(e: React.WheelEvent) {
+  function onWheel(e: React.WheelEvent<HTMLCanvasElement>) {
     e.preventDefault()
     setScale(Math.max(0.4, Math.min(3, scale * (e.deltaY < 0 ? 1.1 : 0.9))))
   }
