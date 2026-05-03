@@ -201,7 +201,7 @@ export default function AirportMap({ floorPlan, playerX, playerY, onSelectPOI }:
     return () => ro.disconnect()
   }, [])
 
-  function handleClick(e: React.MouseEvent<HTMLCanvasElement>) {
+  function handleClick(e: React.MouseEvent) {
     const canvas = canvasRef.current!
     const r = canvas.getBoundingClientRect()
     const cx = e.clientX - r.left
