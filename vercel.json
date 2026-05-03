@@ -1,0 +1,12 @@
+{
+  "buildCommand": "prisma generate && next build",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/position/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/map/route.ts": {
+      "maxDuration": 10
+    }
+  }
+}

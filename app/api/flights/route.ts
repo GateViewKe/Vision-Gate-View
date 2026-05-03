@@ -1,7 +1,4 @@
-// app/api/flights/route.ts
-// Flight data endpoint. In production, integrate AviationStack or FlightAware.
-// Set AVIATIONSTACK_API_KEY in .env to enable live data.
-
+// app/api/flights/route.ts — static mock, no DB needed
 import { NextRequest, NextResponse } from 'next/server'
 
 const MOCK_FLIGHTS = [
@@ -16,43 +13,8 @@ const MOCK_FLIGHTS = [
   { flightNumber: 'SA124', airline: 'South African Airways', destination: 'Johannesburg', status: 'ON_TIME', scheduledDeparture: '16:20', gate: 'B18' },
 ]
 
-async function fetchLiveFlights(airport: string) {
-  const apiKey = process.env.AVIATIONSTACK_API_KEY
-  if (!apiKey) return null
-
-  try {
-    const res = await fetch(
-      `http://api.aviationstack.com/v1/flights?access_key=${apiKey}&dep_iata=${airport}&flight_status=active`,
-      { next: { revalidate: 60 } }  // cache for 60s
-    )
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.data?.map((f: any) => ({
-      flightNumber: f.flight.iata,
-      airline: f.airline.name,
-      destination: f.arrival.airport,
-      status: f.flight_status.toUpperCase(),
-      scheduledDeparture: f.departure.scheduled,
-      estimatedDeparture: f.departure.estimated,
-      gate: f.departure.gate,
-      delayMinutes: f.departure.delay,
-    }))
-  } catch {
-    return null
-  }
-}
-
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const airport = searchParams.get('airport') ?? 'NBO'
-  const gate = searchParams.get('gate')
-
-  const liveFlights = await fetchLiveFlights(airport)
-  let flights = liveFlights ?? MOCK_FLIGHTS
-
-  if (gate) {
-    flights = flights.filter((f: any) => f.gate === gate)
-  }
-
-  return NextResponse.json({ flights, source: liveFlights ? 'live' : 'mock' })
+  const gate = new URL(req.url).searchParams.get('gate')
+  const flights = gate ? MOCK_FLIGHTS.filter(f => f.gate === gate) : MOCK_FLIGHTS
+  return NextResponse.json({ flights, source: 'mock' })
 }
