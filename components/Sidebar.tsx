@@ -1,27 +1,33 @@
 'use client'
-// components/Sidebar.tsx — responsive: drawer on mobile, fixed panel on desktop
+// components/Sidebar.tsx
 
-import { useEffect, useRef } from 'react'
 import { useMapStore } from '@/lib/store'
+import { FLOOR_META } from '@/lib/jkia-data'
 import type { POI } from '@/lib/types'
 
 const TYPE_LABELS: Record<string, string> = {
-  GATE: 'Gates', SHOP: 'Shops', DINING: 'Dining',
-  LOUNGE: 'Lounges', RESTROOM: 'Restrooms', SERVICE: 'Services',
-  SECURITY: 'Security', CHECKIN: 'Check-in',
+  GATE:'Gates', SHOP:'Shops', DINING:'Dining', LOUNGE:'Lounges',
+  RESTROOM:'Restrooms', SERVICE:'Services', SECURITY:'Security',
+  CHECKIN:'Check-in', BAGGAGE:'Baggage', IMMIGRATION:'Immigration',
+  PRAYER:'Prayer', PHARMACY:'Pharmacy', ESCALATOR:'Connections',
+  ELEVATOR:'Lifts', ATM:'ATMs & Forex', INFORMATION:'Information',
 }
-
 const TYPE_COLORS: Record<string, string> = {
-  GATE: '#185FA5', SHOP: '#3B6D11', DINING: '#3B6D11',
-  LOUNGE: '#993556', RESTROOM: '#854F0B', SERVICE: '#854F0B',
-  SECURITY: '#A32D2D', CHECKIN: '#534AB7',
+  GATE:'#185FA5', SHOP:'#3B6D11', DINING:'#3B6D11', LOUNGE:'#993556',
+  RESTROOM:'#854F0B', SERVICE:'#854F0B', SECURITY:'#A32D2D',
+  CHECKIN:'#534AB7', BAGGAGE:'#5F5E5A', IMMIGRATION:'#A32D2D',
+  PRAYER:'#534AB7', PHARMACY:'#854F0B', ESCALATOR:'#185FA5',
+  ELEVATOR:'#185FA5', ATM:'#3B6D11', INFORMATION:'#185FA5',
+}
+const TYPE_ICONS: Record<string, string> = {
+  GATE:'✈', SHOP:'🛍', DINING:'☕', LOUNGE:'🛋', RESTROOM:'🚻',
+  SERVICE:'🏥', SECURITY:'🔒', CHECKIN:'🎫', BAGGAGE:'🧳',
+  IMMIGRATION:'🛂', PRAYER:'✦', PHARMACY:'💊', ESCALATOR:'▲',
+  ELEVATOR:'🔲', ATM:'💳', INFORMATION:'ℹ',
 }
 
-const TYPE_ICONS: Record<string, string> = {
-  GATE: '✈', SHOP: '🛍', DINING: '☕',
-  LOUNGE: '🛋', RESTROOM: '🚻', SERVICE: '🏥',
-  SECURITY: '🔒', CHECKIN: '🎫',
-}
+// Priority sort so Gates & Lounges always come first
+const TYPE_ORDER = ['GATE','LOUNGE','SECURITY','CHECKIN','DINING','SHOP','SERVICE','PHARMACY','PRAYER','RESTROOM','BAGGAGE','IMMIGRATION','ESCALATOR','ELEVATOR','ATM','INFORMATION']
 
 interface Props {
   onNavigate: () => void
@@ -30,280 +36,251 @@ interface Props {
 }
 
 export default function Sidebar({ onNavigate, isOpen, onClose }: Props) {
-  const { pois, selectedPOI, setSelectedPOI, searchQuery, setSearchQuery, route } = useMapStore()
-  const drawerRef = useRef<HTMLDivElement>(null)
+  const {
+    pois, selectedPOI, setSelectedPOI, searchQuery, setSearchQuery,
+    route, currentFloor, setFloor,
+  } = useMapStore()
 
   const filtered = searchQuery
     ? pois.filter(p =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.gateCode ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+        (p.gateCode ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.description ?? '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     : pois
 
-  const groups = Object.keys(TYPE_LABELS).reduce<Record<string, POI[]>>((acc, type) => {
+  const groups = TYPE_ORDER.reduce<Record<string, POI[]>>((acc, type) => {
     const items = filtered.filter(p => p.type === type)
     if (items.length) acc[type] = items
     return acc
   }, {})
 
-  // Close on backdrop tap
-  function handleBackdropClick(e: React.MouseEvent) {
-    if (e.target === e.currentTarget) onClose()
-  }
-
   function handleSelectPOI(poi: POI) {
     setSelectedPOI(poi)
-    onClose() // close drawer on mobile after selecting
+    onClose()   // auto-close drawer on mobile
   }
+
+  const content = (
+    <SidebarContent
+      groups={groups}
+      selectedPOI={selectedPOI}
+      searchQuery={searchQuery}
+      setSearchQuery={setSearchQuery}
+      onSelectPOI={handleSelectPOI}
+      onNavigate={() => { onNavigate(); onClose() }}
+      route={route}
+      currentFloor={currentFloor}
+      setFloor={(f) => { setFloor(f); onClose() }}
+    />
+  )
 
   return (
     <>
-      {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
-      <aside className="sidebar-desktop">
-        <SidebarContent
-          groups={groups}
-          selectedPOI={selectedPOI}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          setSelectedPOI={setSelectedPOI}
-          onNavigate={onNavigate}
-          route={route}
-        />
-      </aside>
+      {/* Desktop */}
+      <aside className="sb-desktop">{content}</aside>
 
-      {/* ── Mobile drawer backdrop ───────────────────────────────────────── */}
+      {/* Mobile drawer */}
       <div
-        className={`drawer-backdrop ${isOpen ? 'open' : ''}`}
-        onClick={handleBackdropClick}
+        className={`sb-backdrop${isOpen ? ' open' : ''}`}
+        onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
       >
-        <div ref={drawerRef} className={`drawer ${isOpen ? 'open' : ''}`}>
-          {/* Drag handle */}
-          <div className="drawer-handle-row" onClick={onClose}>
-            <div className="drawer-handle" />
+        <div className={`sb-drawer${isOpen ? ' open' : ''}`}>
+          <div className="sb-handle-row" onClick={onClose}>
+            <div className="sb-handle" />
           </div>
-
-          <SidebarContent
-            groups={groups}
-            selectedPOI={selectedPOI}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            setSelectedPOI={handleSelectPOI}
-            onNavigate={() => { onNavigate(); onClose() }}
-            route={route}
-            mobile
-          />
+          {content}
         </div>
       </div>
 
       <style>{`
-        /* Desktop: fixed left panel */
-        .sidebar-desktop {
-          width: 240px;
-          display: flex;
-          flex-direction: column;
+        .sb-desktop {
+          width: 248px; flex-shrink: 0;
+          display: flex; flex-direction: column;
           border-right: 0.5px solid var(--color-border-tertiary);
           background: var(--color-background-primary);
-          flex-shrink: 0;
-          height: 100%;
-          overflow: hidden;
+          height: 100%; overflow: hidden;
         }
+        @media (max-width: 639px) { .sb-desktop { display: none; } }
 
-        /* Mobile: hide desktop sidebar */
-        @media (max-width: 639px) {
-          .sidebar-desktop { display: none; }
-        }
-
-        /* Backdrop */
-        .drawer-backdrop {
-          display: none;
-          position: fixed;
-          inset: 0;
-          z-index: 50;
-          background: transparent;
-          pointer-events: none;
+        .sb-backdrop {
+          display: none; position: fixed; inset: 0; z-index: 50;
+          background: transparent; pointer-events: none;
           transition: background 0.25s;
         }
-        .drawer-backdrop.open {
-          background: rgba(0,0,0,0.35);
-          pointer-events: all;
+        .sb-backdrop.open {
+          background: rgba(0,0,0,0.38); pointer-events: all;
         }
-
-        /* Drawer panel slides up from bottom */
-        .drawer {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          background: #fff;
-          border-radius: 16px 16px 0 0;
-          max-height: 82vh;
-          display: flex;
-          flex-direction: column;
-          transform: translateY(100%);
-          transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-          pointer-events: all;
-          overflow: hidden;
+        .sb-drawer {
+          position: absolute; bottom: 0; left: 0; right: 0;
+          background: #fff; border-radius: 18px 18px 0 0;
+          max-height: 84vh; display: flex; flex-direction: column;
+          transform: translateY(100%); pointer-events: all; overflow: hidden;
+          transition: transform 0.32s cubic-bezier(0.32,0.72,0,1);
         }
-        .drawer.open { transform: translateY(0); }
-
-        .drawer-handle-row {
-          display: flex;
-          justify-content: center;
-          padding: 10px 0 6px;
-          cursor: pointer;
-          flex-shrink: 0;
+        .sb-drawer.open { transform: translateY(0); }
+        .sb-handle-row {
+          display: flex; justify-content: center;
+          padding: 10px 0 4px; cursor: pointer; flex-shrink: 0;
         }
-        .drawer-handle {
-          width: 36px;
-          height: 4px;
-          background: #d1d5db;
-          border-radius: 2px;
-        }
-
-        /* Show backdrop on mobile only */
-        @media (max-width: 639px) {
-          .drawer-backdrop { display: block; }
-        }
+        .sb-handle { width: 38px; height: 4px; background: #d1d5db; border-radius: 2px; }
+        @media (max-width: 639px) { .sb-backdrop { display: block; } }
       `}</style>
     </>
   )
 }
 
-/* ── Shared content used in both desktop and mobile ─────────────────────── */
+// ── Shared content ────────────────────────────────────────────────────────────
 function SidebarContent({
   groups, selectedPOI, searchQuery, setSearchQuery,
-  setSelectedPOI, onNavigate, route, mobile = false,
+  onSelectPOI, onNavigate, route, currentFloor, setFloor,
 }: {
   groups: Record<string, POI[]>
   selectedPOI: POI | null
   searchQuery: string
   setSearchQuery: (q: string) => void
-  setSelectedPOI: (poi: POI) => void
+  onSelectPOI: (poi: POI) => void
   onNavigate: () => void
   route: any
-  mobile?: boolean
+  currentFloor: number
+  setFloor: (f: number) => void
 }) {
   return (
     <>
-      {/* Header — desktop only */}
-      {!mobile && (
-        <div style={{ padding: '14px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)', flexShrink: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>GateView</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 1 }}>JKIA Terminal 1A</div>
+      {/* Header */}
+      <div style={{ padding: '14px 16px 10px', borderBottom: '0.5px solid var(--color-border-tertiary)', flexShrink: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>GateView</div>
+        <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 1 }}>JKIA Terminal 1A · Nairobi</div>
+      </div>
+
+      {/* Floor selector */}
+      <div style={{ padding: '8px 12px', borderBottom: '0.5px solid var(--color-border-tertiary)', flexShrink: 0 }}>
+        <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Floor</div>
+        <div style={{ display: 'flex', gap: 5 }}>
+          {FLOOR_META.map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFloor(f.id)}
+              style={{
+                flex: 1, padding: '6px 4px', fontSize: 11, fontWeight: 600,
+                borderRadius: 8, cursor: 'pointer', lineHeight: 1.3,
+                background: currentFloor === f.id ? '#185FA5' : '#f3f4f6',
+                color: currentFloor === f.id ? '#fff' : '#374151',
+                border: `1.5px solid ${currentFloor === f.id ? '#185FA5' : '#e5e7eb'}`,
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              <div style={{ fontSize: 14 }}>{f.shortLabel}</div>
+              <div style={{ fontWeight: 400, fontSize: 9, opacity: 0.8 }}>{f.description.split('·')[0].trim()}</div>
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
       {/* Search */}
-      <div style={{
-        padding: mobile ? '0 16px 10px' : '10px 12px',
-        borderBottom: '0.5px solid var(--color-border-tertiary)',
-        flexShrink: 0,
-      }}>
+      <div style={{ padding: '8px 12px', borderBottom: '0.5px solid var(--color-border-tertiary)', flexShrink: 0 }}>
         <input
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search gate, shop, service…"
-          style={{ width: '100%', fontSize: 14, padding: mobile ? '10px 12px' : '7px 10px' }}
+          placeholder="Search gate, shop, lounge…"
+          style={{ width: '100%', fontSize: 13, padding: '8px 10px' }}
         />
       </div>
 
       {/* POI list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+        {Object.keys(groups).length === 0 && (
+          <div style={{ padding: '24px 16px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
+            No results for "{searchQuery}"
+          </div>
+        )}
         {Object.entries(groups).map(([type, items]) => (
           <div key={type}>
             <div style={{
-              padding: '8px 16px 4px',
-              fontSize: 11, fontWeight: 600,
-              color: 'var(--color-text-secondary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.6px',
+              padding: '8px 16px 3px', fontSize: 10, fontWeight: 600,
+              color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.6px',
             }}>
-              {TYPE_ICONS[type]} {TYPE_LABELS[type]}
+              {TYPE_ICONS[type]} {TYPE_LABELS[type] ?? type}
             </div>
             {items.map(poi => (
               <div
                 key={poi.id}
-                onClick={() => setSelectedPOI(poi)}
+                onClick={() => onSelectPOI(poi)}
                 style={{
-                  padding: mobile ? '12px 16px' : '8px 16px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
+                  padding: '9px 16px', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  minHeight: 48,
                   borderLeft: `2.5px solid ${selectedPOI?.id === poi.id ? TYPE_COLORS[poi.type] : 'transparent'}`,
-                  background: selectedPOI?.id === poi.id ? 'var(--color-background-info)' : 'transparent',
+                  background: selectedPOI?.id === poi.id ? '#EFF6FF' : 'transparent',
                   WebkitTapHighlightColor: 'transparent',
-                  transition: 'background 0.1s',
-                  minHeight: mobile ? 52 : 'auto',
                 }}
               >
                 <div style={{
                   width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                  background: TYPE_COLORS[poi.type] + '18',
+                  background: (TYPE_COLORS[poi.type] ?? '#888') + '18',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 15,
+                  fontSize: 14,
                 }}>
                   {TYPE_ICONS[poi.type]}
                 </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 13, fontWeight: 500,
-                    color: 'var(--color-text-primary)',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>{poi.name}</div>
-                  <div style={{
-                    fontSize: 11, color: 'var(--color-text-secondary)',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>
-                    {poi.description?.split('·')[0].trim() ?? ''}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {poi.name}
                   </div>
+                  {poi.description && (
+                    <div style={{ fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {poi.description.split('·')[0].trim()}
+                    </div>
+                  )}
                 </div>
+                {poi.openHours && (
+                  <div style={{ fontSize: 10, color: '#9ca3af', flexShrink: 0 }}>{poi.openHours}</div>
+                )}
               </div>
             ))}
           </div>
         ))}
       </div>
 
-      {/* Info / Navigate panel */}
+      {/* Navigation panel */}
       <div style={{
-        padding: '12px 16px',
-        borderTop: '0.5px solid var(--color-border-tertiary)',
-        background: 'var(--color-background-secondary)',
-        flexShrink: 0,
+        padding: '12px 16px', borderTop: '0.5px solid var(--color-border-tertiary)',
+        background: '#f9fafb', flexShrink: 0,
       }}>
         {selectedPOI ? (
           <>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-              {selectedPOI.name}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3, lineHeight: 1.5 }}>
-              {selectedPOI.description ?? ''}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+              <div style={{ fontSize: 20, marginTop: 1 }}>{TYPE_ICONS[selectedPOI.type]}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a1a' }}>{selectedPOI.name}</div>
+                {selectedPOI.description && (
+                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2, lineHeight: 1.5 }}>
+                    {selectedPOI.description}
+                  </div>
+                )}
+                {selectedPOI.openHours && (
+                  <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3 }}>
+                    🕐 {selectedPOI.openHours}
+                  </div>
+                )}
+              </div>
             </div>
             {route && (
-              <div style={{ fontSize: 11, color: 'var(--color-text-info)', marginTop: 5 }}>
-                {Math.round(route.distanceMeters)}m · ~{Math.round(route.walkTimeSeconds / 60)} min walk
+              <div style={{ fontSize: 11, color: '#185FA5', marginBottom: 6, fontWeight: 500 }}>
+                📍 {Math.round(route.distanceMeters)}m · ~{Math.round(route.walkTimeSeconds / 60)} min walk
               </div>
             )}
             <button
               onClick={onNavigate}
               className="primary"
-              style={{
-                marginTop: 10, width: '100%',
-                fontSize: 13, padding: mobile ? '11px 12px' : '7px 12px',
-              }}
+              style={{ width: '100%', fontSize: 13, fontWeight: 600, padding: '9px 12px', borderRadius: 8 }}
             >
               {route ? '↺ Recalculate route' : '→ Navigate here'}
             </button>
           </>
         ) : (
-          <>
-            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)' }}>
-              Select a location
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3, lineHeight: 1.5 }}>
-              Tap any gate, shop, or service on the map or in this list.
-            </div>
-          </>
+          <div style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center', padding: '4px 0' }}>
+            Tap a location on the map or in the list above to navigate
+          </div>
         )}
       </div>
     </>
