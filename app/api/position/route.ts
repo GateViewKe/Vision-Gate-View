@@ -1,7 +1,8 @@
 // app/api/position/route.ts
-// Static version — always returns simulated position. No database required.
+// Returns simulated position and stores position logs when the database is available.
 
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
 import { getSimulatedPosition, smoothPosition } from '@/lib/positioning'
 
 const positionCache = new Map<string, ReturnType<typeof getSimulatedPosition>>()
@@ -21,9 +22,25 @@ export async function POST(req: NextRequest) {
 
     positionCache.set(sessionId, position)
 
+    // This is optional logging. It must never break the demo UI.
+    try {
+      await db.positionLog.create({
+        data: {
+          sessionId,
+          x: position.x,
+          y: position.y,
+          floor: 1,
+          accuracy: position.accuracy ?? 5,
+          method: 'simulated',
+        },
+      })
+    } catch (logError) {
+      console.warn('[api/position] position log skipped:', logError)
+    }
+
     return NextResponse.json({ ...position, timestamp: Date.now() })
   } catch (err) {
-    console.error('[position]', err)
+    console.error('[api/position]', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -55,7 +55,7 @@ export const useMapStore = create<MapState>((set) => ({
       route: null,
     }),
 
-  viewMode: '2d',
+  viewMode: '3d',
   setViewMode: (viewMode) => set({ viewMode }),
 
   selectedPOI: null,

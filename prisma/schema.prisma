@@ -10,37 +10,68 @@ datasource db {
 }
 
 model Airport {
-  id        String   @id @default(cuid())
-  code      String   @unique   // e.g. "JKIA"
+  id        String     @id @default(cuid())
+  code      String     @unique // e.g. "JKIA"
   name      String
   city      String
   country   String
   terminals Terminal[]
   beacons   Beacon[]
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
 }
 
 model Terminal {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   airportId String
-  airport   Airport @relation(fields: [airportId], references: [id])
-  name      String                       // e.g. "Terminal 1A"
-  floor     Int     @default(0)
-  floorPlan Json                         // GeoJSON-style wall/corridor polygons
+  airport   Airport  @relation(fields: [airportId], references: [id], onDelete: Cascade)
+  code      String   // e.g. "T1A". Required because API routes search by terminal code.
+  name      String   // e.g. "Terminal 1A"
+  floor     Int      @default(0)
+  floorPlan Json
   pois      POI[]
   beacons   Beacon[]
+  tickets   Ticket[]
+
+  @@unique([airportId, code])
+}
+
+model Ticket {
+  id                 String    @id @default(cuid())
+  ticketNumber       String    @unique
+  passengerName      String
+  flightNumber       String
+  airline            String
+  airlineLogo        String?
+  origin             String
+  destination        String
+  gate               String
+  floor              Int       @default(1)
+  seat               String
+  seatClass          String    @default("Economy") // Economy | Business | First
+  scheduledDeparture String    // "HH:MM" local time
+  boardingTime       String    // "HH:MM" local time
+  status             String    @default("ON_TIME") // ON_TIME | BOARDING | DELAYED | DEPARTED | CANCELLED
+  delayMinutes       Int?
+  terminalId         String?
+  terminal           Terminal? @relation(fields: [terminalId], references: [id], onDelete: SetNull)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([ticketNumber])
+  @@index([flightNumber])
+  @@index([gate])
 }
 
 model POI {
   id          String   @id @default(cuid())
   terminalId  String
-  terminal    Terminal @relation(fields: [terminalId], references: [id])
+  terminal    Terminal @relation(fields: [terminalId], references: [id], onDelete: Cascade)
   name        String
   type        POIType
-  x           Float                      // canvas X coordinate
-  y           Float                      // canvas Y coordinate
+  x           Float
+  y           Float
   description String?
-  gateCode    String?                    // e.g. "B12"
+  gateCode    String?
   flightId    String?
   openHours   String?
   createdAt   DateTime @default(now())
@@ -50,14 +81,14 @@ model POI {
 model Beacon {
   id         String   @id @default(cuid())
   airportId  String
-  airport    Airport  @relation(fields: [airportId], references: [id])
+  airport    Airport  @relation(fields: [airportId], references: [id], onDelete: Cascade)
   terminalId String
-  terminal   Terminal @relation(fields: [terminalId], references: [id])
+  terminal   Terminal @relation(fields: [terminalId], references: [id], onDelete: Cascade)
   macAddress String   @unique
   x          Float
   y          Float
   floor      Int      @default(0)
-  txPower    Int      @default(-59)      // RSSI at 1m in dBm
+  txPower    Int      @default(-59)
   createdAt  DateTime @default(now())
 }
 
@@ -68,7 +99,7 @@ model PositionLog {
   y         Float
   floor     Int      @default(0)
   accuracy  Float
-  method    String   @default("wifi")   // "wifi" | "ble" | "gps"
+  method    String   @default("wifi") // "wifi" | "ble" | "gps" | "simulated"
   createdAt DateTime @default(now())
 
   @@index([sessionId])

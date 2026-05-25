@@ -38,6 +38,7 @@ export default function Home() {
   const [animating, setAnimating] = useState(false)
   const [routePath, setRoutePath] = useState<{ x: number; y: number }[] | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [manualPosition, setManualPosition] = useState(false)
 
   const animRef  = useRef<number>(0)
   const animTRef = useRef(0)
@@ -54,14 +55,14 @@ export default function Home() {
         .then(r => r.json())
         .then(pos => {
           setPosition(pos)
-          if (!animating) { setPlayerX(pos.x); setPlayerY(pos.y) }
+          if (!animating && !manualPosition) { setPlayerX(pos.x); setPlayerY(pos.y) }
         })
         .catch(() => {})
 
     poll()
     pollRef.current = setInterval(poll, 2000)
     return () => clearInterval(pollRef.current)
-  }, [animating, setPosition])
+  }, [animating, manualPosition, setPosition])
 
   // Animate player along route
   useEffect(() => {
@@ -94,6 +95,12 @@ export default function Home() {
     setRoutePath(null)
   }, [setSelectedPOI, setRoute])
 
+  const handleManualMove = useCallback((x: number, y: number) => {
+    setManualPosition(true)
+    setPlayerX(x)
+    setPlayerY(y)
+  }, [])
+
   const handleNavigate = useCallback(async () => {
     if (!selectedPOI) return
     try {
@@ -105,6 +112,7 @@ export default function Home() {
           to:   { x: selectedPOI.x, y: selectedPOI.y },
         }),
       })
+      setViewMode('3d')
       const data = await res.json()
       if (data.path) {
         setRoute(data)
@@ -114,12 +122,14 @@ export default function Home() {
     } catch (e) {
       console.error('navigate error', e)
     }
-  }, [selectedPOI, playerX, playerY, setRoute])
+  }, [selectedPOI, playerX, playerY, setRoute, setViewMode])
 
   // Ticket confirm: jump to the gate's floor and select its POI
   const handleTicketConfirm = useCallback((ticket: TicketInfo) => {
     setTicketInfo(ticket)
     setFloor(ticket.floor)
+    setViewMode('3d')
+    setManualPosition(false)
     setShowLogin(false)
 
     // After floor switch, find the gate POI and select it
@@ -128,7 +138,7 @@ export default function Home() {
       const gatePOI = pois.find(p => p.gateCode === ticket.gate || p.id === ticket.gate.toLowerCase())
       if (gatePOI) setSelectedPOI(gatePOI)
     }, 50)
-  }, [setTicketInfo, setFloor, setSelectedPOI])
+  }, [setTicketInfo, setFloor, setSelectedPOI, setViewMode])
 
   const { route } = useMapStore()
 
@@ -243,6 +253,7 @@ export default function Home() {
               playerX={playerX}
               playerY={playerY}
               onSelectPOI={handleSelectPOI}
+              onPlayerMove={handleManualMove}
             />
           ) : (
             <AirportMap
@@ -336,7 +347,7 @@ export default function Home() {
           <BotBtn icon="✈" label="My Flight" active={false} onClick={() => setShowLogin(true)} />
         )}
         {selectedPOI && route && (
-          <BotBtn icon="→" label={`~${Math.round(route.walkTimeSeconds / 60)}m`} active accent onClick={handleNavigate} />
+          <BotBtn icon="→" label={`~${Math.round(route.walkTimeSeconds / 60)} min`} active accent onClick={handleNavigate} />
         )}
       </nav>
 
